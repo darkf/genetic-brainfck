@@ -8,15 +8,13 @@ data ISC = Modify Int -- *ptr += x
          | LoopI [ISC]
          deriving (Show, Eq)
 
--- reduce Plus and Minus to an integer and a tail
-reduceModifiers :: [Instruction] -> Int -> (Int, [Instruction])
-reduceModifiers (Plus:xs) n = reduceModifiers xs (n+1)
-reduceModifiers (Minus:xs) n = reduceModifiers xs (n-1)
-reduceModifiers r n = (n, r)
-
-reduceMovement (RightI:xs) n = reduceMovement xs (n+1)
-reduceMovement (LeftI:xs) n = reduceMovement xs (n-1)
-reduceMovement r n = (n, r)
+-- Count and reduce instructions
+reduceInstruction :: [Instruction] -> (Instruction, Instruction) -> Int -> (Int, [Instruction])
+reduceInstruction [] _ n = (n, [])
+reduceInstruction r@(x:xs) ins@(ins_inc, ins_dec) n
+  | x == ins_inc = reduceInstruction xs ins (n+1)
+  | x == ins_dec = reduceInstruction xs ins (n-1)
+  | otherwise = (n, r)
 
 bf_reduce ::  [Instruction] -> [ISC] -> [ISC]
 
@@ -35,10 +33,10 @@ bf_reduce (x:xs) [] =
 
 bf_reduce ins@(x:xs) prg@(p:ps) =
 	case x of
-		Plus -> reduceModify p $ reduceModifiers ins 0
-		Minus -> reduceModify p $ reduceModifiers ins 0
-		LeftI -> reduceMove p $ reduceMovement ins 0
-		RightI -> reduceMove p $ reduceMovement ins 0
+		Plus -> reduceModify p $ reduceInstruction ins (Plus, Minus) 0
+		Minus -> reduceModify p $ reduceInstruction ins (Plus, Minus) 0
+		LeftI -> reduceMove p $ reduceInstruction ins (RightI, LeftI) 0
+		RightI -> reduceMove p $ reduceInstruction ins (RightI, LeftI) 0
 		Out -> bf_reduce xs (OutI:prg)
 		Loop body -> bf_reduce xs (LoopI (bf_reduce body []) : prg)
 
