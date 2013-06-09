@@ -1,6 +1,6 @@
 module Eval (bf_eval) where
 import qualified Data.Vector.Mutable as MV
-import Control.Monad.ST
+import Control.Monad.ST (runST)
 import Data.Char (chr)
 import Reducer
 
@@ -10,7 +10,6 @@ bf_eval instrs =
 	where
 	bf_eval' instrs = do
 		cells <- MV.replicate 3000 (0 :: Int)
-		-- MV.set cells 0
 		eval cells instrs 0 ""
 
 		where
