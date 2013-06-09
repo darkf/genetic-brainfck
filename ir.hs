@@ -1,4 +1,4 @@
-module IR (Instruction, bf_to_ir) where
+module IR (Instruction(..), bf_to_ir) where
 
 -- Simple IR for Brainfuck programs
 data Instruction = LeftI
