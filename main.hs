@@ -2,6 +2,7 @@ module Main (main) where
 import Control.Exception (assert)
 import IR
 import Reducer
+import Eval
 
 main =
 	let program = "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
@@ -13,4 +14,6 @@ main =
 	putStrLn "" >>
 	print ir >>
 	putStrLn "" >>
-	print reduced
+	print reduced >>
+	putStrLn "" >>
+	print (bf_eval reduced)
