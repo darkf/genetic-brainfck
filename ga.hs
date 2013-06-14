@@ -8,7 +8,7 @@ import System.Random
 
 popSize = 32
 geneLength = 32
-charsetLength = 7
+charsetLength = 5
 
 newtype Individual = Individual String
 newtype Population = Population [Individual]
@@ -16,9 +16,11 @@ newtype Population = Population [Individual]
 instance Show Individual where
 	show (Individual a) = show a
 
-calcFitness ir =
+calcFitness :: Individual -> Float
+calcFitness (Individual str) =
 	fitnessOf $ bf_eval $ bf_reduce ir []
 	where
+		ir = bf_to_ir str
 		fitnessOf :: String -> Float
 		fitnessOf output =
 			cmpStr output "hi"
@@ -66,7 +68,7 @@ generateGenes gen =
 	map toChar $ take geneLength inf
 	where
 		inf = randomRs (0, charsetLength-1) gen
-		toChar i = "+-<>[]." !! i
+		toChar i = "+-<>." !! i
 
 generatePopulation :: IO [Individual]
 generatePopulation =
@@ -93,4 +95,7 @@ main =
 	--let pop = map (\_ -> generateGenes seed) [1..popSize]
 	pop <- generatePopulation
 	-- print $ pop
-	mapM_ print pop
+	mapM_ (\ind@(Individual i) -> do
+					putStrLn $ "individual: " ++ i
+					print $ calcFitness ind
+		) pop
