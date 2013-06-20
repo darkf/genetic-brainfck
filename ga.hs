@@ -67,12 +67,6 @@ getFittest (Population pop) =
 				(fitness, x)
 			else acc
 
--- from StackOverflow, because I'm lazy
-replaceNth :: Int -> a -> [a] -> [a]
-replaceNth n newVal (x:xs)
-    | n == 0 = newVal:xs
-    | otherwise = x:replaceNth (n-1) newVal xs
-
 crossover :: StdGen -> Individual -> Individual -> Individual
 crossover seed (Individual a) (Individual b) =
 	Individual $ reverse.fst $ foldr (\i (xs,seed) ->
