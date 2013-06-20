@@ -5,15 +5,14 @@ import Reducer (ISC(..), bf_reduce)
 import Eval
 import Data.Char (ord)
 import System.Random
--- import Safe (at)
-import Debug.Trace (trace)
 
 (!!!) = (!!)
 
 popSize = 64
 geneLength = 64
 targetString = "a"
-charsetLength = 5
+charset = "+-<>."
+charsetLength = length charset
 targetFitness = fitnessOf targetString
 
 uniformRate = 0.8 :: Float
@@ -60,7 +59,7 @@ generateGenes gen =
 	map toChar $ take geneLength inf
 	where
 		inf = randomRs (0, charsetLength-1) gen
-		toChar i = "+-<>." !!! i
+		toChar i = charset !!! i
 
 getFittest :: Population -> (Float, Individual)
 getFittest (Population pop) =
@@ -72,6 +71,8 @@ getFittest (Population pop) =
 			if fitness > fst acc then
 				(fitness, x)
 			else acc
+
+-- Oh, God, these `foldr`s! I wonder what a better non-IO way to do this would be.
 
 crossover :: StdGen -> Individual -> Individual -> (Individual, StdGen)
 crossover seed (Individual a) (Individual b) =
@@ -91,7 +92,7 @@ mutate seed (Individual a) =
 		let (r, seed') = randomR (0.0, 1.0) seed in
 		if r <= mutationRate then
 			let (r',seed'') = randomR (0, charsetLength-1) seed'
-			in let c = "+-<>." !!! r'
+			in let c = charset !!! r'
 			in
 			(c : xs, seed'') -- add random gene
 		else
@@ -131,21 +132,9 @@ generatePopulation =
 			seed <- newStdGen
 			return $ Individual $ generateGenes seed) [1..popSize]
 
-main =
-	do
+main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
-	-- print $ eval_str targetStr
-	-- print $ calcFitness (bf_to_ir program)
-	-- print $ bf_to_ir program
-	-- putStrLn "wat"
-	-- seed <- newStdGen
-	--let pop = map (\_ -> generateGenes seed) [1..popSize]
 	pop <- generatePopulation
-	-- print $ pop
-	{- mapM_ (\ind@(Individual i) -> do
-					putStrLn $ "individual: " ++ i
-					print $ calcFitness ind
-		) pop -}
 	seed <- newStdGen
 	target <- loop 0 (Population pop) seed
 	putStrLn $ "Reached target: " ++ show (snd target)
