@@ -33,29 +33,6 @@ calcFitness (Individual str) =
 			else
 				cmpStr cs ts
 
-bf_expand :: [ISC] -> [Instruction] -> [Instruction]
-bf_expand [] acc = reverse acc
-bf_expand (x:xs) acc =
-	case x of
-		Modify i ->
-			if i > 0 then bf_expand xs (replicate i Plus ++ acc)
-			else bf_expand xs (replicate i Minus ++ acc)
-		Move i ->
-			if i > 0 then bf_expand xs (replicate i RightI ++ acc)
-			else bf_expand xs (replicate i LeftI ++ acc)
-		-- LoopI body -> bf_expand xs (Loop body ++ acc)
-		OutI -> bf_expand xs (Out : acc)
-
-bf_to_str :: [Instruction] -> String -> String
-bf_to_str [] str = reverse str
-bf_to_str (x:xs) str =
-	case x of
-		Plus -> bf_to_str xs ('+':str)
-		Minus -> bf_to_str xs ('-':str)
-		LeftI -> bf_to_str xs ('<':str)
-		RightI -> bf_to_str xs ('>':str)
-		Out -> bf_to_str xs ('.':str)
-
 eval_str :: String -> String
 eval_str str =
 	bf_eval isc
@@ -78,7 +55,7 @@ generatePopulation =
 
 main =
 	let
-	    program = "[]>+-<..>>[]].-<+.<+<-..+>][+--+" -- random popSize-length string
+	    -- program = "[]>+-<..>>[]].-<+.<+<-..+>][+--+" -- random popSize-length string
 	    -- targetISC = [Modify (ord 'h'), OutI, Move 1, Modify (ord 'i'), OutI]
 	    -- targetIR = bf_expand targetISC []
 	    targetStr = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++.>+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++."
@@ -91,7 +68,7 @@ main =
 	-- print $ calcFitness (bf_to_ir program)
 	-- print $ bf_to_ir program
 	-- putStrLn "wat"
-	seed <- newStdGen
+	-- seed <- newStdGen
 	--let pop = map (\_ -> generateGenes seed) [1..popSize]
 	pop <- generatePopulation
 	-- print $ pop

@@ -1,4 +1,4 @@
-module Reducer (ISC(..), bf_reduce) where
+module Reducer (ISC(..), bf_reduce, bf_expand, bf_to_str) where
 import IR
 
 -- Reduce Brainfuck instructions (from the IR) into more compact instructions
@@ -46,3 +46,26 @@ bf_reduce ins@(x:xs) prg@(p:ps) =
 
 		reduceMove (Move i) (n,r) = bf_reduce r (Move (i+n) : ps)
 		reduceMove _ (n,r) = bf_reduce r (Move n : prg)
+
+bf_expand :: [ISC] -> [Instruction] -> [Instruction]
+bf_expand [] acc = reverse acc
+bf_expand (x:xs) acc =
+	case x of
+		Modify i ->
+			if i > 0 then bf_expand xs (replicate i Plus ++ acc)
+			else bf_expand xs (replicate i Minus ++ acc)
+		Move i ->
+			if i > 0 then bf_expand xs (replicate i RightI ++ acc)
+			else bf_expand xs (replicate i LeftI ++ acc)
+		-- LoopI body -> bf_expand xs (Loop body ++ acc)
+		OutI -> bf_expand xs (Out : acc)
+
+bf_to_str :: [Instruction] -> String -> String
+bf_to_str [] str = reverse str
+bf_to_str (x:xs) str =
+	case x of
+		Plus -> bf_to_str xs ('+':str)
+		Minus -> bf_to_str xs ('-':str)
+		LeftI -> bf_to_str xs ('<':str)
+		RightI -> bf_to_str xs ('>':str)
+		Out -> bf_to_str xs ('.':str)
