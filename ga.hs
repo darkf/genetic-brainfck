@@ -9,6 +9,11 @@ import System.Random
 popSize = 32
 geneLength = 32
 charsetLength = 5
+targetFitness = 2.0 :: Float
+
+uniformRate = 0.5 :: Float
+mutationRate = 0.015 :: Float
+tournamentSize = 5
 
 newtype Individual = Individual String
 newtype Population = Population [Individual]
@@ -46,6 +51,33 @@ generateGenes gen =
 	where
 		inf = randomRs (0, charsetLength-1) gen
 		toChar i = "+-<>." !! i
+
+getFittest :: Population -> (Float, Individual)
+getFittest (Population pop) =
+	foldr maxFitness ((-1.0), head pop) pop
+	where
+		maxFitness :: Individual -> (Float, Individual) -> (Float, Individual)
+		maxFitness x acc =
+			let fitness = calcFitness x in
+			if fitness > fst acc then
+				(fitness, x)
+			else acc
+
+-- from StackOverflow, because I'm lazy
+replaceNth :: Int -> a -> [a] -> [a]
+replaceNth n newVal (x:xs)
+    | n == 0 = newVal:xs
+    | otherwise = x:replaceNth (n-1) newVal xs
+
+crossover :: StdGen -> Individual -> Individual -> Individual
+crossover seed (Individual a) (Individual b) =
+	Individual $ reverse.fst $ foldr (\i (xs,seed) ->
+		let (r, seed') = randomR (0.0, 1.0) seed in
+		if r <= uniformRate then
+			((a !! i) : xs, seed')
+		else
+			((b !! i) : xs, seed')
+		) ([], seed) [0..geneLength]
 
 generatePopulation :: IO [Individual]
 generatePopulation =
