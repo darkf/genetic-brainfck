@@ -92,6 +92,18 @@ mutate seed (Individual a) =
 			((a !! i) : xs, seed')
 	) ([], seed) [0..geneLength]
 
+tournamentSelection :: StdGen -> Population -> Individual
+tournamentSelection seed (Population pop) =
+	let tournamentPop = Population $ reverse.fst $ foldr (\i (xs,seed) ->
+		let (r, seed') = randomR (0, popSize) seed in
+		((pop !! r) : xs, seed')
+		) ([], seed) [0..tournamentSize]
+	in
+	let fittest = getFittest tournamentPop
+	in
+	snd fittest
+
+
 generatePopulation :: IO [Individual]
 generatePopulation =
 	mapM (\_ -> do
