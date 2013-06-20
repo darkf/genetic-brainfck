@@ -6,18 +6,19 @@ import Eval
 import Data.Char (ord)
 import System.Random
 -- import Safe (at)
+import Debug.Trace (trace)
 
 (!!!) = (!!)
 
-popSize = 32
-geneLength = 32
+popSize = 64
+geneLength = 64
 targetString = "a"
 charsetLength = 5
-targetFitness = 2.0 :: Float
+targetFitness = fitnessOf targetString
 
-uniformRate = 0.5 :: Float
-mutationRate = 0.015 :: Float
-tournamentSize = 5
+uniformRate = 0.8 :: Float
+mutationRate = 0.05 :: Float
+tournamentSize = popSize `div` 3
 
 newtype Individual = Individual String
 newtype Population = Population [Individual]
@@ -25,14 +26,15 @@ newtype Population = Population [Individual]
 instance Show Individual where
 	show (Individual a) = show a
 
-calcFitness :: Individual -> Float
-calcFitness (Individual str) =
-	fitnessOf $ bf_eval $ bf_reduce ir []
+fitnessOf :: String -> Float
+fitnessOf output =
+	fromIntegral $ bfCmp output targetString
 	where
-		ir = bf_to_ir str
-		fitnessOf :: String -> Float
-		fitnessOf output =
-			cmpStr output targetString
+		bfCmp [] _ = 0
+		bfCmp _ [] = 0
+		bfCmp (c:cs) (t:ts) =
+			(256 - abs (ord t - ord c)) + bfCmp cs ts
+
 		cmpStr :: String -> String -> Float
 		cmpStr [] _ = 0
 		cmpStr _ [] = 0
@@ -41,6 +43,10 @@ calcFitness (Individual str) =
 				1.0 + cmpStr cs ts
 			else
 				cmpStr cs ts
+
+calcFitness :: Individual -> Float
+calcFitness (Individual str) =
+	fitnessOf $ eval_str str
 
 eval_str :: String -> String
 eval_str str =
@@ -113,9 +119,11 @@ evolvePopulation seed pop =
 			    (c,seed''') = crossover seed'' a b
 			    (c',seed'''') = mutate seed''' c
 			in
-			(c' : xs, seed'''')) ([], seed) [1..popSize]
+			(c' : xs, seed'''')) ([], seed) [1..popSize-1]
 	in
-	(Population $ reverse $ keptBest : fst pop', snd pop')
+	-- keep best survivor from last generation
+	let p = fst pop' ++ [keptBest] in
+	(Population $ reverse $ p, snd pop')
 
 generatePopulation :: IO [Individual]
 generatePopulation =
@@ -124,16 +132,8 @@ generatePopulation =
 			return $ Individual $ generateGenes seed) [1..popSize]
 
 main =
-	let
-	    -- program = "[]>+-<..>>[]].-<+.<+<-..+>][+--+" -- random popSize-length string
-	    -- targetISC = [Modify (ord 'h'), OutI, Move 1, Modify (ord 'i'), OutI]
-	    -- targetIR = bf_expand targetISC []
-	    targetStr = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++.>+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++."
-	    --program = "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
-	    --ir = bf_to_ir program
-	    --reduced = bf_reduce ir []
-	in
 	do
+	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
 	-- print $ eval_str targetStr
 	-- print $ calcFitness (bf_to_ir program)
 	-- print $ bf_to_ir program
@@ -151,13 +151,14 @@ main =
 	putStrLn $ "Reached target: " ++ show (snd target)
 	putStrLn $ "Fitness: " ++ show (fst target)
 	where
+		fromInd (Individual i) = i
 		loop :: Int -> Population -> StdGen -> IO (Float, Individual)
 		loop gen pop seed =
 			let (fitness,fittest) = getFittest pop in
 			if fitness < targetFitness then
 				do
-					if gen `mod` 1 == 0 then
-						putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest
+					if gen `mod` 50 == 0 then
+						putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ (eval_str (fromInd fittest)) ++ ")"
 					else return ()
 					let (evolved,seed') = evolvePopulation seed pop
 					loop (gen+1) evolved seed'
