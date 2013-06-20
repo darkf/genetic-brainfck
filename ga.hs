@@ -79,6 +79,19 @@ crossover seed (Individual a) (Individual b) =
 			((b !! i) : xs, seed')
 		) ([], seed) [0..geneLength]
 
+mutate :: StdGen -> Individual -> Individual
+mutate seed (Individual a) =
+	Individual $ reverse.fst $ foldr (\i (xs,seed) ->
+		let (r, seed') = randomR (0.0, 1.0) seed in
+		if r <= mutationRate then
+			let (r',seed'') = randomR (0, charsetLength-1) seed'
+			in let c = "+-<>." !! r'
+			in
+			(c : xs, seed'') -- add random gene
+		else
+			((a !! i) : xs, seed')
+	) ([], seed) [0..geneLength]
+
 generatePopulation :: IO [Individual]
 generatePopulation =
 	mapM (\_ -> do
