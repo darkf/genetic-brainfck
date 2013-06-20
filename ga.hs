@@ -111,10 +111,12 @@ evolvePopulation pop =
 			seed <- newStdGen
 			seed' <- newStdGen
 			seed'' <- newStdGen
+			seed''' <- newStdGen
 			let a = tournamentSelection seed pop
 			let b = tournamentSelection seed' pop
 			let c = crossover seed'' a b
-			return c
+			let c' = mutate seed''' c
+			return c'
 	) [1..popSize]
 	>>= (\x -> return $ Population (x ++ [keptBest]))
 
