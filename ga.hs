@@ -67,9 +67,10 @@ getFittest (Population pop) =
 				(fitness, x)
 			else acc
 
-crossover :: StdGen -> Individual -> Individual -> Individual
+crossover :: StdGen -> Individual -> Individual -> (Individual, StdGen)
 crossover seed (Individual a) (Individual b) =
-	Individual $ reverse.fst $ foldr (\i (xs,seed) ->
+	(Individual $ reverse $ fst r, snd r)
+	where r = foldr (\i (xs,seed) ->
 		let (r, seed') = randomR (0.0, 1.0) seed in
 		if r <= uniformRate then
 			((a !!! i) : xs, seed')
@@ -77,9 +78,10 @@ crossover seed (Individual a) (Individual b) =
 			((b !!! i) : xs, seed')
 		) ([], seed) [0..geneLength-1]
 
-mutate :: StdGen -> Individual -> Individual
+mutate :: StdGen -> Individual -> (Individual, StdGen)
 mutate seed (Individual a) =
-	Individual $ reverse.fst $ foldr (\i (xs,seed) ->
+	(Individual $ reverse $ fst r, snd r)
+	where r = foldr (\i (xs,seed) ->
 		let (r, seed') = randomR (0.0, 1.0) seed in
 		if r <= mutationRate then
 			let (r',seed'') = randomR (0, charsetLength-1) seed'
@@ -88,35 +90,32 @@ mutate seed (Individual a) =
 			(c : xs, seed'') -- add random gene
 		else
 			((a !!! i) : xs, seed')
-	) ([], seed) [0..geneLength-1]
+		) ([], seed) [0..geneLength-1]
 
-tournamentSelection :: StdGen -> Population -> Individual
+tournamentSelection :: StdGen -> Population -> (Individual, StdGen)
 tournamentSelection seed (Population pop) =
-	let tournamentPop = Population $ reverse.fst $ foldr (\i (xs,seed) ->
-		let (r, seed') = randomR (0, popSize-1) seed in
-		((pop !!! r) : xs, seed')
+	let r = foldr (\i (xs,seed) ->
+			let (r, seed') = randomR (0, popSize-1) seed in
+			((pop !!! r) : xs, seed')
 		) ([], seed) [0..tournamentSize-1]
+	    tournamentPop = Population $ reverse $ fst r
+	    seed' = snd r
+	    fittest = getFittest tournamentPop
 	in
-	let fittest = getFittest tournamentPop
-	in
-	snd fittest
+	(snd fittest, seed')
 
-evolvePopulation :: Population -> IO Population
-evolvePopulation pop =
-	let (_,keptBest) = getFittest pop in
-	mapM (\i ->
-		do
-			seed <- newStdGen
-			seed' <- newStdGen
-			seed'' <- newStdGen
-			seed''' <- newStdGen
-			let a = tournamentSelection seed pop
-			let b = tournamentSelection seed' pop
-			let c = crossover seed'' a b
-			let c' = mutate seed''' c
-			return c'
-	) [1..popSize]
-	>>= (\x -> return $ Population (x ++ [keptBest]))
+evolvePopulation :: StdGen -> Population -> (Population, StdGen)
+evolvePopulation seed pop =
+	let (_,keptBest) = getFittest pop
+	    pop' = foldr (\i (xs,seed) ->
+			let (a,seed') = tournamentSelection seed pop
+			    (b,seed'') = tournamentSelection seed' pop
+			    (c,seed''') = crossover seed'' a b
+			    (c',seed'''') = mutate seed''' c
+			in
+			(c' : xs, seed'''')) ([], seed) [1..popSize]
+	in
+	(Population $ reverse $ keptBest : fst pop', snd pop')
 
 generatePopulation :: IO [Individual]
 generatePopulation =
@@ -147,19 +146,20 @@ main =
 					putStrLn $ "individual: " ++ i
 					print $ calcFitness ind
 		) pop -}
-	target <- loop 0 (Population pop)
+	seed <- newStdGen
+	target <- loop 0 (Population pop) seed
 	putStrLn $ "Reached target: " ++ show (snd target)
 	putStrLn $ "Fitness: " ++ show (fst target)
 	where
-		loop :: Int -> Population -> IO (Float, Individual)
-		loop gen pop =
+		loop :: Int -> Population -> StdGen -> IO (Float, Individual)
+		loop gen pop seed =
 			let (fitness,fittest) = getFittest pop in
 			if fitness < targetFitness then
 				do
-					if gen `mod` 50 == 0 then
+					if gen `mod` 1 == 0 then
 						putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest
 					else return ()
-					evolved <- evolvePopulation pop
-					loop (gen+1) evolved
+					let (evolved,seed') = evolvePopulation seed pop
+					loop (gen+1) evolved seed'
 			else
 				return (fitness, fittest)
