@@ -5,9 +5,13 @@ import Reducer (ISC(..), bf_reduce)
 import Eval
 import Data.Char (ord)
 import System.Random
+-- import Safe (at)
+
+(!!!) = (!!)
 
 popSize = 32
 geneLength = 32
+targetString = "a"
 charsetLength = 5
 targetFitness = 2.0 :: Float
 
@@ -28,7 +32,7 @@ calcFitness (Individual str) =
 		ir = bf_to_ir str
 		fitnessOf :: String -> Float
 		fitnessOf output =
-			cmpStr output "hi"
+			cmpStr output targetString
 		cmpStr :: String -> String -> Float
 		cmpStr [] _ = 0
 		cmpStr _ [] = 0
@@ -50,7 +54,7 @@ generateGenes gen =
 	map toChar $ take geneLength inf
 	where
 		inf = randomRs (0, charsetLength-1) gen
-		toChar i = "+-<>." !! i
+		toChar i = "+-<>." !!! i
 
 getFittest :: Population -> (Float, Individual)
 getFittest (Population pop) =
@@ -74,10 +78,10 @@ crossover seed (Individual a) (Individual b) =
 	Individual $ reverse.fst $ foldr (\i (xs,seed) ->
 		let (r, seed') = randomR (0.0, 1.0) seed in
 		if r <= uniformRate then
-			((a !! i) : xs, seed')
+			((a !!! i) : xs, seed')
 		else
-			((b !! i) : xs, seed')
-		) ([], seed) [0..geneLength]
+			((b !!! i) : xs, seed')
+		) ([], seed) [0..geneLength-1]
 
 mutate :: StdGen -> Individual -> Individual
 mutate seed (Individual a) =
@@ -85,19 +89,19 @@ mutate seed (Individual a) =
 		let (r, seed') = randomR (0.0, 1.0) seed in
 		if r <= mutationRate then
 			let (r',seed'') = randomR (0, charsetLength-1) seed'
-			in let c = "+-<>." !! r'
+			in let c = "+-<>." !!! r'
 			in
 			(c : xs, seed'') -- add random gene
 		else
-			((a !! i) : xs, seed')
-	) ([], seed) [0..geneLength]
+			((a !!! i) : xs, seed')
+	) ([], seed) [0..geneLength-1]
 
 tournamentSelection :: StdGen -> Population -> Individual
 tournamentSelection seed (Population pop) =
 	let tournamentPop = Population $ reverse.fst $ foldr (\i (xs,seed) ->
-		let (r, seed') = randomR (0, popSize) seed in
-		((pop !! r) : xs, seed')
-		) ([], seed) [0..tournamentSize]
+		let (r, seed') = randomR (0, popSize-1) seed in
+		((pop !!! r) : xs, seed')
+		) ([], seed) [0..tournamentSize-1]
 	in
 	let fittest = getFittest tournamentPop
 	in
@@ -145,7 +149,23 @@ main =
 	--let pop = map (\_ -> generateGenes seed) [1..popSize]
 	pop <- generatePopulation
 	-- print $ pop
-	mapM_ (\ind@(Individual i) -> do
+	{- mapM_ (\ind@(Individual i) -> do
 					putStrLn $ "individual: " ++ i
 					print $ calcFitness ind
-		) pop
+		) pop -}
+	target <- loop 0 (Population pop)
+	putStrLn $ "Reached target: " ++ show (snd target)
+	putStrLn $ "Fitness: " ++ show (fst target)
+	where
+		loop :: Int -> Population -> IO (Float, Individual)
+		loop gen pop =
+			let (fitness,fittest) = getFittest pop in
+			if fitness < targetFitness then
+				do
+					if gen `mod` 50 == 0 then
+						putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest
+					else return ()
+					evolved <- evolvePopulation pop
+					loop (gen+1) evolved
+			else
+				return (fitness, fittest)
