@@ -103,6 +103,20 @@ tournamentSelection seed (Population pop) =
 	in
 	snd fittest
 
+evolvePopulation :: Population -> IO Population
+evolvePopulation pop =
+	let (_,keptBest) = getFittest pop in
+	mapM (\i ->
+		do
+			seed <- newStdGen
+			seed' <- newStdGen
+			seed'' <- newStdGen
+			let a = tournamentSelection seed pop
+			let b = tournamentSelection seed' pop
+			let c = crossover seed'' a b
+			return c
+	) [1..popSize]
+	>>= (\x -> return $ Population (x ++ [keptBest]))
 
 generatePopulation :: IO [Individual]
 generatePopulation =
