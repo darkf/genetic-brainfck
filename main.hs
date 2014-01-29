@@ -58,26 +58,20 @@ getFittest pop =
 				(fitness, x)
 			else acc
 
+chance :: Float -> a -> a -> Rand StdGen a
+chance rate heads tails = do
+	r <- getRandomR (0.0, 1.0)
+	if r <= rate then return heads else return tails
+
 crossover :: Individual -> Individual -> Rand StdGen Individual
-crossover a b = do
-	indiv <- forM [0..geneLength-1] $ \i -> do
-				r <- getRandomR (0.0, 1.0)
-				if r <= uniformRate then
-					return $ a !! i
-				else
-					return $ b !! i
-	return indiv
+crossover a b =
+	forM [0..geneLength-1] $ \i -> chance uniformRate (a !! i) (b !! i)
 
 mutate :: Individual -> Rand StdGen Individual
-mutate a = do
-	indiv <- forM [0..geneLength-1] $ \i -> do
-		r <- getRandomR (0.0, 1.0)
-		if r <= mutationRate then do
-			r' <- getRandomR (0, charsetLength-1)
-			return $ charset !! r' -- add random gene
-		else
-			return $ a !! i
-	return indiv
+mutate indiv = do
+	randGene <- getRandomR (0, charsetLength-1)
+	forM indiv $ \gene ->
+		chance mutationRate gene (charset !! randGene) -- possibly add random gene
 
 tournamentSelection :: Population -> Rand StdGen Individual
 tournamentSelection pop = do
