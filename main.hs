@@ -1,8 +1,7 @@
 module Main (main) where
 import Control.Monad.Random
 import Control.Monad (forM)
-import Control.Monad.IO.Class (liftIO)
-import IR (Instruction(..), bf_to_ir)
+import IR (bfToIR)
 import Eval
 import Data.Char (ord)
 
@@ -34,19 +33,17 @@ fitnessOf output =
 		cmpStr [] _ = 0
 		cmpStr _ [] = 0
 		cmpStr (c:cs) (t:ts) =
-			if c == t then
-				1.0 + cmpStr cs ts
-			else
-				cmpStr cs ts
+			if c == t then 1.0 + cmpStr cs ts
+			else cmpStr cs ts
 
 calcFitness :: Individual -> Float
-calcFitness str = fitnessOf $ eval_str str
+calcFitness = fitnessOf . evalStr
 
-eval_str :: String -> String
-eval_str str = bf_eval (bf_to_ir str)
+evalStr :: String -> String
+evalStr = bfEval . bfToIR
 
-generateGenes :: Rand StdGen String
-generateGenes = do
+randomGenes :: Rand StdGen String
+randomGenes = do
 	inf <- getRandomRs (0, charsetLength-1)
 	return $ map (charset !!) (take geneLength inf)
 
@@ -103,7 +100,7 @@ evolvePopulation pop = do
 
 generatePopulation :: Rand StdGen [Individual]
 generatePopulation =
-	forM [1..popSize] $ \_ -> generateGenes >>= return
+	forM [1..popSize] $ \_ -> randomGenes >>= return
 
 main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
@@ -118,7 +115,7 @@ main = do
 			if fitness < targetFitness then
 				do
 					if gen `rem` 50 == 0 then
-						liftIO $ putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ eval_str fittest ++ ")"
+						putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ evalStr fittest ++ ")"
 					else return ()
 					let (evolved,seed') = runRand (evolvePopulation pop) seed
 					loop (gen+1) evolved seed'

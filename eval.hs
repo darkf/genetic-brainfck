@@ -1,4 +1,4 @@
-module Eval (bf_eval) where
+module Eval (bfEval) where
 import qualified Data.Vector.Mutable as MV
 import Control.Monad.ST (runST)
 import Data.Char (chr)
@@ -8,10 +8,10 @@ import Reducer
 cellSize = 3000
 
 -- Evaluate Brainf*ck IR
-bf_eval instrs =
-	runST $ bf_eval' instrs
+bfEval instrs =
+	runST $ bfEval' instrs
 	where
-	bf_eval' instrs = do
+	bfEval' instrs = do
 		cells <- MV.replicate cellSize (0 :: Int)
 		eval cells instrs 0 ""
 
@@ -39,11 +39,11 @@ bf_eval instrs =
 					eval cells xs clampedPtr out
 
 -- Evaluate ISC instructions
-bf_eval_isc :: [ISC] -> String
-bf_eval_isc instrs =
-	runST $ bf_eval' instrs
+bfEvalISC :: [ISC] -> String
+bfEvalISC instrs =
+	runST $ bfEval' instrs
 	where
-	bf_eval' instrs = do
+	bfEval' instrs = do
 		cells <- MV.replicate cellSize (0 :: Int)
 		eval cells instrs 0 ""
 
