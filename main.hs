@@ -1,5 +1,7 @@
 module Main (main) where
 import Control.Exception (assert)
+import Control.Monad.Random (Rand, runRand, evalRand, getRandomR, getRandomRs)
+import Control.Monad (forM)
 import IR (Instruction(..), bf_to_ir)
 import Reducer (ISC(..), bf_reduce)
 import Eval
@@ -55,11 +57,11 @@ eval_str str =
 		ir = bf_to_ir str
 		isc = bf_reduce ir []
 
-generateGenes :: StdGen -> String
-generateGenes gen =
-	map toChar $ take geneLength inf
+generateGenes :: Rand StdGen String
+generateGenes = do
+	inf <- getRandomRs (0, charsetLength-1)
+	return $ map toChar $ take geneLength inf
 	where
-		inf = randomRs (0, charsetLength-1) gen
 		toChar i = charset !!! i
 
 getFittest :: Population -> (Float, Individual)
@@ -73,18 +75,15 @@ getFittest (Population pop) =
 				(fitness, x)
 			else acc
 
--- Oh, God, these `foldr`s! I wonder what a better non-IO way to do this would be.
-
-crossover :: StdGen -> Individual -> Individual -> (Individual, StdGen)
-crossover seed (Individual a) (Individual b) =
-	(Individual $ reverse $ fst r, snd r)
-	where r = foldr (\i (xs,seed) ->
-		let (r, seed') = randomR (0.0, 1.0) seed in
-		if r <= uniformRate then
-			((a !!! i) : xs, seed')
-		else
-			((b !!! i) : xs, seed')
-		) ([], seed) [0..geneLength-1]
+crossover :: Individual -> Individual -> Rand StdGen Individual
+crossover (Individual a) (Individual b) = do
+	indiv <- forM [0..geneLength-1] $ \i -> do
+				r <- getRandomR (0.0, 1.0)
+				if r <= uniformRate then
+					return $ a !!! i
+				else
+					return $ b !!! i
+	return $ Individual $ reverse indiv
 
 mutate :: StdGen -> Individual -> (Individual, StdGen)
 mutate seed (Individual a) =
@@ -100,38 +99,30 @@ mutate seed (Individual a) =
 			((a !!! i) : xs, seed')
 		) ([], seed) [0..geneLength-1]
 
-tournamentSelection :: StdGen -> Population -> (Individual, StdGen)
-tournamentSelection seed (Population pop) =
-	let r = foldr (\i (xs,seed) ->
-			let (r, seed') = randomR (0, popSize-1) seed in
-			((pop !!! r) : xs, seed')
-		) ([], seed) [0..tournamentSize-1]
-	    tournamentPop = Population $ reverse $ fst r
-	    seed' = snd r
-	    fittest = getFittest tournamentPop
-	in
-	(snd fittest, seed')
+tournamentSelection :: Population -> Rand StdGen Individual
+tournamentSelection (Population pop) = do
+	pop' <- forM [0..tournamentSize-1] $ \i -> do
+		r <- getRandomR (0, popSize-1)
+		return $ pop !!! r
+	let (_,fittest) = getFittest $ Population (reverse pop')
+	return fittest
 
-evolvePopulation :: StdGen -> Population -> (Population, StdGen)
-evolvePopulation seed pop =
+evolvePopulation :: Population -> Rand StdGen Population
+evolvePopulation pop = do
 	let (_,keptBest) = getFittest pop
-	    pop' = foldr (\i (xs,seed) ->
-			let (a,seed') = tournamentSelection seed pop
-			    (b,seed'') = tournamentSelection seed' pop
-			    (c,seed''') = crossover seed'' a b
-			    (c',seed'''') = mutate seed''' c
-			in
-			(c' : xs, seed'''')) ([], seed) [1..popSize-1]
-	in
+	pop' <- forM [1..popSize-1] $ \i -> do
+		a <- tournamentSelection pop
+		b <- tournamentSelection pop
+		c <- crossover a b
+		return $ mutate c
 	-- keep best survivor from last generation
-	let p = fst pop' ++ [keptBest] in
-	(Population $ reverse $ p, snd pop')
+	let p = fst pop' ++ [keptBest]
+	return $ Population $ reverse p
 
-generatePopulation :: IO [Individual]
+generatePopulation :: Rand StdGen [Individual]
 generatePopulation =
 	mapM (\_ -> do
-			let seed = mkStdGen (randSeed*2)
-			return $ Individual $ generateGenes seed) [1..popSize]
+			generateGenes >>= return . Individual) [1..popSize]
 
 main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
