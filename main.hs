@@ -1,7 +1,9 @@
 module Main (main) where
 import Control.Exception (assert)
-import Control.Monad.Random (Rand, runRand, evalRand, getRandomR, getRandomRs)
+import Control.Monad.Random
 import Control.Monad (forM)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Class (lift)
 import IR (Instruction(..), bf_to_ir)
 import Reducer (ISC(..), bf_reduce)
 import Eval
@@ -85,19 +87,16 @@ crossover (Individual a) (Individual b) = do
 					return $ b !!! i
 	return $ Individual $ reverse indiv
 
-mutate :: StdGen -> Individual -> (Individual, StdGen)
-mutate seed (Individual a) =
-	(Individual $ reverse $ fst r, snd r)
-	where r = foldr (\i (xs,seed) ->
-		let (r, seed') = randomR (0.0, 1.0) seed in
-		if r <= mutationRate then
-			let (r',seed'') = randomR (0, charsetLength-1) seed'
-			in let c = charset !!! r'
-			in
-			(c : xs, seed'') -- add random gene
+mutate :: Individual -> Rand StdGen Individual
+mutate (Individual a) = do
+	indiv <- forM [0..geneLength-1] $ \i -> do
+		r <- getRandomR (0.0, 1.0)
+		if r <= mutationRate then do
+			r' <- getRandomR (0, charsetLength-1)
+			return $ charset !!! r' -- add random gene
 		else
-			((a !!! i) : xs, seed')
-		) ([], seed) [0..geneLength-1]
+			return $ a !!! i
+	return $ Individual $ reverse indiv
 
 tournamentSelection :: Population -> Rand StdGen Individual
 tournamentSelection (Population pop) = do
@@ -114,9 +113,9 @@ evolvePopulation pop = do
 		a <- tournamentSelection pop
 		b <- tournamentSelection pop
 		c <- crossover a b
-		return $ mutate c
+		mutate c
 	-- keep best survivor from last generation
-	let p = fst pop' ++ [keptBest]
+	let p = pop' ++ [keptBest]
 	return $ Population $ reverse p
 
 generatePopulation :: Rand StdGen [Individual]
@@ -126,8 +125,7 @@ generatePopulation =
 
 main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
-	pop <- generatePopulation
-	let seed = mkStdGen randSeed
+	let (pop,seed) = runRand generatePopulation (mkStdGen randSeed)
 	target <- loop 0 (Population pop) seed
 	putStrLn $ "Reached target: " ++ show (snd target)
 	putStrLn $ "Fitness: " ++ show (fst target)
@@ -139,9 +137,9 @@ main = do
 			if fitness < targetFitness then
 				do
 					if gen `mod` 50 == 0 then
-						putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ (eval_str (fromInd fittest)) ++ ")"
+						liftIO $ putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ (eval_str (fromInd fittest)) ++ ")"
 					else return ()
-					let (evolved,seed') = evolvePopulation seed pop
+					let (evolved,seed') = runRand (evolvePopulation pop) seed
 					loop (gen+1) evolved seed'
 			else
 				return (fitness, fittest)
