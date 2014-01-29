@@ -1,9 +1,9 @@
 module Main (main) where
 import Control.Monad.Random
 import Control.Monad (forM)
-import IR (bfToIR)
-import Eval
 import Data.Char (ord)
+import IR (bfToIR)
+import Eval (bfEval)
 
 popSize = 64
 geneLength = 128
@@ -49,7 +49,7 @@ randomGenes = do
 
 getFittest :: Population -> (Float, Individual)
 getFittest pop =
-	foldr maxFitness ((-1.0), head pop) pop
+	foldr maxFitness ((-1.0), []) pop
 	where
 		maxFitness :: Individual -> (Float, Individual) -> (Float, Individual)
 		maxFitness x acc =
@@ -81,7 +81,7 @@ mutate a = do
 
 tournamentSelection :: Population -> Rand StdGen Individual
 tournamentSelection pop = do
-	pop' <- forM [0..tournamentSize-1] $ \i -> do
+	pop' <- forM [0..tournamentSize-1] $ \_ -> do
 		r <- getRandomR (0, popSize-1)
 		return $ pop !! r
 	let (_,fittest) = getFittest pop'
@@ -90,7 +90,7 @@ tournamentSelection pop = do
 evolvePopulation :: Population -> Rand StdGen Population
 evolvePopulation pop = do
 	let (_,keptBest) = getFittest pop
-	pop' <- forM [1..popSize-1] $ \i -> do
+	pop' <- forM [1..popSize-1] $ \_ -> do
 		a <- tournamentSelection pop
 		b <- tournamentSelection pop
 		c <- crossover a b
@@ -99,8 +99,7 @@ evolvePopulation pop = do
 	return $ pop' ++ [keptBest]
 
 generatePopulation :: Rand StdGen [Individual]
-generatePopulation =
-	forM [1..popSize] $ \_ -> randomGenes >>= return
+generatePopulation = forM [1..popSize] $ const randomGenes
 
 main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
