@@ -70,7 +70,7 @@ crossover a b = do
 					return $ a !! i
 				else
 					return $ b !! i
-	return $ reverse indiv
+	return indiv
 
 mutate :: Individual -> Rand StdGen Individual
 mutate a = do
@@ -81,14 +81,14 @@ mutate a = do
 			return $ charset !! r' -- add random gene
 		else
 			return $ a !! i
-	return $ reverse indiv
+	return indiv
 
 tournamentSelection :: Population -> Rand StdGen Individual
 tournamentSelection pop = do
 	pop' <- forM [0..tournamentSize-1] $ \i -> do
 		r <- getRandomR (0, popSize-1)
 		return $ pop !! r
-	let (_,fittest) = getFittest $ reverse pop'
+	let (_,fittest) = getFittest pop'
 	return fittest
 
 evolvePopulation :: Population -> Rand StdGen Population
@@ -100,8 +100,7 @@ evolvePopulation pop = do
 		c <- crossover a b
 		mutate c
 	-- keep best survivor from last generation
-	let p = pop' ++ [keptBest]
-	return $ reverse p
+	return $ pop' ++ [keptBest]
 
 generatePopulation :: Rand StdGen [Individual]
 generatePopulation =
