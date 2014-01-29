@@ -3,20 +3,19 @@ import Control.Monad.Random
 import Control.Monad (forM)
 import Control.Monad.IO.Class (liftIO)
 import IR (Instruction(..), bf_to_ir)
-import Reducer (ISC(..), bf_reduce)
 import Eval
 import Data.Char (ord)
 
 popSize = 64
-geneLength = 64
+geneLength = 128
 targetString = "a"
 charset = "+-<>."
 randSeed = 42
 charsetLength = length charset
 targetFitness = fitnessOf targetString
 
-uniformRate = 0.8 :: Float
-mutationRate = 0.05 :: Float
+uniformRate = 0.80 :: Float
+mutationRate = 0.10 :: Float
 tournamentSize = popSize `div` 3
 
 type Individual = String
@@ -44,7 +43,7 @@ calcFitness :: Individual -> Float
 calcFitness str = fitnessOf $ eval_str str
 
 eval_str :: String -> String
-eval_str str = bf_eval $ bf_reduce (bf_to_ir str) []
+eval_str str = bf_eval (bf_to_ir str)
 
 generateGenes :: Rand StdGen String
 generateGenes = do
