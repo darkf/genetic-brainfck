@@ -68,9 +68,9 @@ crossover a b =
 	forM [0..geneLength-1] $ \i -> chance uniformRate (a !! i) (b !! i)
 
 mutate :: Individual -> Rand StdGen Individual
-mutate indiv = do
-	randGene <- getRandomR (0, charsetLength-1)
-	forM indiv $ \gene ->
+mutate indiv =
+	forM indiv $ \gene -> do
+		randGene <- getRandomR (0, charsetLength-1)
 		chance mutationRate gene (charset !! randGene) -- possibly add random gene
 
 tournamentSelection :: Population -> Rand StdGen Individual
