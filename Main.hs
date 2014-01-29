@@ -20,21 +20,12 @@ tournamentSize = popSize `div` 3
 type Individual = String
 type Population = [Individual]
 
-fitnessOf :: String -> Float
-fitnessOf output =
-	fromIntegral $ bfCmp output targetString
-	where
-		bfCmp [] _ = 0
-		bfCmp _ [] = 0
-		bfCmp (c:cs) (t:ts) =
-			(256 - abs (ord t - ord c)) + bfCmp cs ts
+-- fitness functions
+bfCmp a b = fromIntegral $ foldr (\(a,b) acc -> 256 - abs (ord b - ord a) + acc) 0 $ zip a b
+cmpStr a b = fromIntegral . length . filter (uncurry (==)) $ zip a b
 
-		cmpStr :: String -> String -> Float
-		cmpStr [] _ = 0
-		cmpStr _ [] = 0
-		cmpStr (c:cs) (t:ts) =
-			if c == t then 1.0 + cmpStr cs ts
-			else cmpStr cs ts
+fitnessOf :: String -> Float
+fitnessOf output = bfCmp output targetString
 
 calcFitness :: Individual -> Float
 calcFitness = fitnessOf . evalStr
