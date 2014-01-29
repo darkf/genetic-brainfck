@@ -19,11 +19,8 @@ uniformRate = 0.8 :: Float
 mutationRate = 0.05 :: Float
 tournamentSize = popSize `div` 3
 
-newtype Individual = Individual String
-newtype Population = Population [Individual]
-
-instance Show Individual where
-	show (Individual a) = show a
+type Individual = String
+type Population = [Individual]
 
 fitnessOf :: String -> Float
 fitnessOf output =
@@ -44,7 +41,7 @@ fitnessOf output =
 				cmpStr cs ts
 
 calcFitness :: Individual -> Float
-calcFitness (Individual str) = fitnessOf $ eval_str str
+calcFitness str = fitnessOf $ eval_str str
 
 eval_str :: String -> String
 eval_str str = bf_eval $ bf_reduce (bf_to_ir str) []
@@ -55,7 +52,7 @@ generateGenes = do
 	return $ map (charset !!) (take geneLength inf)
 
 getFittest :: Population -> (Float, Individual)
-getFittest (Population pop) =
+getFittest pop =
 	foldr maxFitness ((-1.0), head pop) pop
 	where
 		maxFitness :: Individual -> (Float, Individual) -> (Float, Individual)
@@ -66,17 +63,17 @@ getFittest (Population pop) =
 			else acc
 
 crossover :: Individual -> Individual -> Rand StdGen Individual
-crossover (Individual a) (Individual b) = do
+crossover a b = do
 	indiv <- forM [0..geneLength-1] $ \i -> do
 				r <- getRandomR (0.0, 1.0)
 				if r <= uniformRate then
 					return $ a !! i
 				else
 					return $ b !! i
-	return $ Individual $ reverse indiv
+	return $ reverse indiv
 
 mutate :: Individual -> Rand StdGen Individual
-mutate (Individual a) = do
+mutate a = do
 	indiv <- forM [0..geneLength-1] $ \i -> do
 		r <- getRandomR (0.0, 1.0)
 		if r <= mutationRate then do
@@ -84,14 +81,14 @@ mutate (Individual a) = do
 			return $ charset !! r' -- add random gene
 		else
 			return $ a !! i
-	return $ Individual $ reverse indiv
+	return $ reverse indiv
 
 tournamentSelection :: Population -> Rand StdGen Individual
-tournamentSelection (Population pop) = do
+tournamentSelection pop = do
 	pop' <- forM [0..tournamentSize-1] $ \i -> do
 		r <- getRandomR (0, popSize-1)
 		return $ pop !! r
-	let (_,fittest) = getFittest $ Population (reverse pop')
+	let (_,fittest) = getFittest $ reverse pop'
 	return fittest
 
 evolvePopulation :: Population -> Rand StdGen Population
@@ -104,27 +101,26 @@ evolvePopulation pop = do
 		mutate c
 	-- keep best survivor from last generation
 	let p = pop' ++ [keptBest]
-	return $ Population $ reverse p
+	return $ reverse p
 
 generatePopulation :: Rand StdGen [Individual]
 generatePopulation =
-	forM [1..popSize] $ \_ -> generateGenes >>= return . Individual
+	forM [1..popSize] $ \_ -> generateGenes >>= return
 
 main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
 	let (pop,seed) = runRand generatePopulation (mkStdGen randSeed)
-	target <- loop 0 (Population pop) seed
+	target <- loop 0 pop seed
 	putStrLn $ "Reached target: " ++ show (snd target)
 	putStrLn $ "Fitness: " ++ show (fst target)
 	where
-		fromInd (Individual i) = i
 		loop :: Int -> Population -> StdGen -> IO (Float, Individual)
 		loop gen pop seed =
 			let (fitness,fittest) = getFittest pop in
 			if fitness < targetFitness then
 				do
 					if gen `rem` 50 == 0 then
-						liftIO $ putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ (eval_str (fromInd fittest)) ++ ")"
+						liftIO $ putStrLn $ "Generation " ++ show gen ++ ", fitness: " ++ show fitness ++ ", fittest: " ++ show fittest ++ " (" ++ eval_str fittest ++ ")"
 					else return ()
 					let (evolved,seed') = runRand (evolvePopulation pop) seed
 					loop (gen+1) evolved seed'
