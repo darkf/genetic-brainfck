@@ -12,6 +12,7 @@ popSize = 64
 geneLength = 64
 targetString = "a"
 charset = "+-<>."
+randSeed = 42
 charsetLength = length charset
 targetFitness = fitnessOf targetString
 
@@ -129,13 +130,13 @@ evolvePopulation seed pop =
 generatePopulation :: IO [Individual]
 generatePopulation =
 	mapM (\_ -> do
-			seed <- newStdGen
+			let seed = mkStdGen (randSeed*2)
 			return $ Individual $ generateGenes seed) [1..popSize]
 
 main = do
 	putStrLn $ "Target fitness of " ++ show targetString ++ " is: " ++ show targetFitness
 	pop <- generatePopulation
-	seed <- newStdGen
+	let seed = mkStdGen randSeed
 	target <- loop 0 (Population pop) seed
 	putStrLn $ "Reached target: " ++ show (snd target)
 	putStrLn $ "Fitness: " ++ show (fst target)
